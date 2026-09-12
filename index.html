@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AllOverMap — World Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIINfQ3KZp8j1M8N4lN4M0VJ4j9gQ5m4M0=" crossorigin="" />
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, Segoe UI, sans-serif; background: #08111f; }
+    #map { width: 100%; height: 100%; }
+    .topbar {
+      position: absolute; z-index: 1000; top: 18px; left: 50%; transform: translateX(-50%);
+      width: min(720px, calc(100% - 32px)); padding: 12px 16px; border-radius: 18px;
+      background: rgba(8,17,31,.9); color: white; box-shadow: 0 10px 35px rgba(0,0,0,.35);
+      backdrop-filter: blur(12px); display: flex; align-items: center; gap: 12px;
+    }
+    .logo { font-weight: 800; font-size: 20px; white-space: nowrap; }
+    .search { flex: 1; min-width: 0; border: 1px solid #334155; background: #111c2e; color: white; padding: 10px 13px; border-radius: 12px; outline: none; }
+    .btn { border: 0; border-radius: 12px; padding: 10px 14px; cursor: pointer; background: #2563eb; color: white; font-weight: 700; }
+    .btn:hover { background: #1d4ed8; }
+    .legend { position:absolute; z-index:1000; bottom:22px; left:22px; padding:10px 13px; border-radius:12px; background:rgba(8,17,31,.88); color:#e2e8f0; font-size:12px; }
+    @media(max-width:600px){ .topbar{top:10px; padding:10px;} .logo{font-size:16px;} .btn{padding:9px 10px;} }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="logo">🌍 AllOverMap</div>
+    <input id="search" class="search" type="text" placeholder="Search a place..." aria-label="Search a place" />
+    <button class="btn" id="reset">World</button>
+  </div>
+  <div id="map"></div>
+  <div class="legend">Interactive world map • Zoom, drag and search places</div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script>
+    const map = L.map('map', { worldCopyJump: true, minZoom: 2 }).setView([20, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    const reset = () => map.setView([20, 0], 2);
+    document.getElementById('reset').addEventListener('click', reset);
+
+    let marker;
+    const search = document.getElementById('search');
+    search.addEventListener('keydown', async (event) => {
+      if (event.key !== 'Enter') return;
+      const q = search.value.trim();
+      if (!q) return;
+      try {
+        const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q);
+        const response = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+        const results = await response.json();
+        if (!results.length) { alert('Place not found.'); return; }
+        const p = results[0];
+        const lat = Number(p.lat), lon = Number(p.lon);
+        map.setView([lat, lon], 10);
+        if (marker) marker.remove();
+        marker = L.marker([lat, lon]).addTo(map).bindPopup('<b>' + escapeHtml(p.display_name) + '</b>').openPopup();
+      } catch (e) { alert('Search could not be completed.'); }
+    });
+
+    function escapeHtml(value) {
+      return value.replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+    }
+  </script>
+</body>
+</html>
